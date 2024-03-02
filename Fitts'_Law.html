@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Slider Example</title>
+    <style>
+        .square {
+            width: 100px;
+            height: 100px;
+            background-color: rgb(245, 65, 119);
+            margin: 5px;
+            display: inline-block;
+            margin-top: 1%;
+            cursor: pointer; /* Add cursor pointer to indicate clickable */
+        }
+        .container {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .slider-container {
+            text-align: center;
+            margin-top: 50px;
+        }
+        #slider {
+            width: 300px;
+            height: 10px;
+        }
+        #sliderValue {
+            font-size: 20px;
+            margin-left: 10px;
+        }
+        button {
+            width: 100px;
+            height: 40px;
+            font-size: 20px;
+            margin-left: 10px;
+        }
+        #startButton {
+            background-color: green; /* Change the background color to green */
+            color: white; /* Change the text color to white for better visibility */
+            width: 125px; /* Adjust the width as needed */
+
+        }
+        .difficulty-index {
+            font-size: 20px;
+            margin-right: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+        .trial-message {
+            font-size: 25px;
+            margin-top: 3%;
+        }
+
+        .compelete-task {
+            font-size: 25px;
+            margin-top: 3%;
+        }
+
+        .time-taken {
+            font-size: 20px;
+            margin-top: 0.1%;
+        }
+        #resultsContainer {
+            display: none;
+        }
+        .end-msg {
+            font-size: 30px;
+            margin-top: 0.1%;
+        }
+        #resultsButton {
+            width: 175px; /* Adjust the width as needed */
+            background-color: rgb(71, 71, 71); /* Change the background color to green */
+            color: white; /* Change the text color to white for better visibility */
+
+        }
+        #setButton {
+            width: 90px; /* Adjust the width as needed */
+            background-color: rgb(195, 195, 195); /* Change the background color to green */
+            color: rgb(0, 0, 0); /* Change the text color to white for better visibility */
+
+        }
+
+    </style>
+</head>
+<body>
+    <div id="currentDifficultyLevel">Trial 1: </div>
+    <div class="slider-container">
+        <span class="difficulty-index">Difficulty Index:</span>
+        <input type="range" id="slider" min="2" max="6" step="1" value="2">
+        <span id="sliderValue">2</span>
+        <button id="setButton" onclick="prepareSquares()">Set</button>
+        <button id="startButton" class="hidden" onclick="startExperiment()">Start Trial</button>
+        <button id="resultsButton" onclick="exportToExcel()">Download Results</button>
+
+    </div>
+    <div class="container" id="squaresContainer"></div>
+    <div class="container" id="messageContainer"></div> <!-- Container for the message -->
+    <div class="container" id="trialMessageContainer"></div> <!-- Container for the trial message -->
+    <div class="container" id="compeleteTask"></div> <!-- Container for Compelete Task Message -->
+    <div class="container" id="timerContainer"></div> <!-- Container for the timer -->
+    <div class="container" id="endTrialMessage"></div>
+    <div class="container" id="resultsContainer">
+        <table id="resultsTable">
+            <tr>
+                <th>Difficulty Level</th>
+                <th>Pair</th> <!-- Add a header for the pair -->
+                <th>Time Taken (seconds)</th>
+            </tr>
+        </table>
+            </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
+    <script>
+        let results = []; // Array to store results
+        const slider = document.getElementById('slider');
+        const sliderValue = document.getElementById('sliderValue');
+        const squaresContainer = document.getElementById('squaresContainer');
+        const messageContainer = document.getElementById('messageContainer');
+        const startButton = document.getElementById('startButton');
+        const compeleteTask = document.getElementById('compeleteTask');
+        const timerContainer = document.getElementById('timerContainer');
+        const trialMessageContainer = document.getElementById('trialMessageContainer'); // Get the trial message container
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsTable = document.getElementById('resultsTable');
+
+        let clickCount = 0; // Initialize click count
+        let lastClickedSquare = null; // Keep track of the last clicked square
+        let experimentStarted = false; // Flag to indicate if the experiment has started
+        let startTime; // Variable to store the start time
+        let trialCounts = {
+            2: 0,
+            3: 0,
+            4: 0,
+            5: 0,
+            6: 0
+        };
+
+        // Update the slider value display
+        slider.oninput = function() {
+            sliderValue.textContent = this.value;
+        }
+
+        slider.oninput = function() {
+        sliderValue.textContent = this.value;
+        let currentDifficulty = parseInt(this.value);
+        document.getElementById('currentDifficultyLevel').textContent =
+            'Trial ' + (currentDifficulty - 1) + ' (Completed: ' + trialCounts[currentDifficulty] + ' times)';
+    }
+
+        function exportToExcel() {
+            // Create a new workbook
+            var wb = XLSX.utils.book_new();
+            // Convert the table to a worksheet
+            var ws = XLSX.utils.table_to_sheet(document.getElementById('resultsTable'));
+            // Add the worksheet to the workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Results');
+            // Generate the Excel file
+            XLSX.writeFile(wb, 'Results.xlsx');
+        }
+
+
+        // Prepare squares for the experiment
+        function prepareSquares() {
+            generateSquares(); // Generate squares based on the slider value
+            startButton.classList.remove('hidden'); // Show the start button
+            experimentStarted = false; // Reset experiment started flag
+            timerContainer.innerHTML = ''; // Clear the timer
+            compeleteTask.innerHTML = '';
+            trialMessageContainer.innerHTML = ''; // Clear the trial message
+            resultsContainer.style.display = 'none'; // Hide the results container
+            
+        }
+
+        // Start the experiment
+        function startExperiment() {
+            experimentStarted = true; // Set experiment started flag
+            messageContainer.innerHTML = ''; // Clear the message
+            clickCount = 0; // Reset click count
+            lastClickedSquare = null; // Reset last clicked square
+            trialMessageContainer.innerHTML = '<p class="trial-message">Trial Has Begun!   (Click Back and Forth on both Squares)</p>'; // Display the trial message
+        }
+
+        // Generate two squares as buttons based on the slider value
+        function generateSquares() {
+            squaresContainer.innerHTML = ''; // Clear existing squares
+            // Define colors for each pair of squares
+            const colors = ['rgb(245, 55, 109)', 'rgb(245, 55, 109)', 'rgb(245, 55, 109)'];
+
+            // Define the base size and distance for each difficulty level
+            const baseConfig = {
+                2: { size: 150, distance: 25 },
+                3: { size: 120, distance: 200 },
+                4: { size: 80, distance: 350 },
+                5: { size: 60, distance: 600 },
+                6: { size: 40, distance: 900 }
+            };
+
+            // Get the current difficulty index
+            const difficultyIndex = parseInt(slider.value);
+
+            // Create three square layouts for the selected difficulty index
+            for (let i = 0; i < 3; i++) {
+                // Adjust the size and distance for each sub-level
+                const size = baseConfig[difficultyIndex].size + i * 60;
+                const distance = baseConfig[difficultyIndex].distance + i * 60;
+
+                // Create the first square button
+                const square1 = document.createElement('button');
+                square1.className = 'square';
+                square1.style.width = square1.style.height = size + 'px';
+                square1.style.backgroundColor = colors[i]; // Set the color
+                square1.onclick = () => handleSquareClick(square1, i);
+                squaresContainer.appendChild(square1);
+
+                // Create a spacer div for the distance between the squares
+                const spacer = document.createElement('div');
+                spacer.style.display = 'inline-block';
+                spacer.style.width = distance + 'px';
+                squaresContainer.appendChild(spacer);
+
+                // Create the second square button
+                const square2 = document.createElement('button');
+                square2.className = 'square';
+                square2.style.width = square2.style.height = size + 'px';
+                square2.style.backgroundColor = colors[i]; // Set the color
+                square2.onclick = () => handleSquareClick(square2, i);
+                squaresContainer.appendChild(square2);
+
+                // Add a line break for visual separation
+                squaresContainer.appendChild(document.createElement('br'));
+    }
+}
+
+        // Handle square button clicks
+        function handleSquareClick(square, pairIndex) {
+            if (experimentStarted && square !== lastClickedSquare) { // Check if the experiment has started and the clicked square is different from the last clicked square
+                // Initialize startTime on the first click
+                if (clickCount === 0) {
+                    startTime = new Date();
+                }
+                clickCount++;
+                lastClickedSquare = square; // Update the last clicked square
+                if (clickCount >= 20) {
+                    // 10 clicks on each square
+                    experimentStarted = false; // End the experiment
+                    let endTime = new Date(); // Record the end time
+                    let elapsedTime = (endTime - startTime) / 1000; // Calculate elapsed time in seconds
+                    let currentDifficulty = parseInt(slider.value);
+                    trialCounts[currentDifficulty]++; // Increment the count for the current difficulty level
+
+                    // Save the result
+                    results.push({
+                        difficulty: parseInt(slider.value),
+                        pair: pairIndex + 1, // Add 1 to pairIndex for display purposes
+                        timeTaken: elapsedTime
+                    });
+
+                    compeleteTask.innerHTML = '<p class="compelete-task">This Task Completed Successfully!</p>';
+                    timerContainer.innerHTML = '<p class="time-taken">Time taken: ' + elapsedTime + ' seconds</p>'; // Display the time taken
+                    trialMessageContainer.innerHTML = ''; // Clear the trial message
+                    
+                    
+                    resultsContainer.style.display = 'block';
+                    // Add a new row to the results table
+                    let newRow = resultsTable.insertRow(-1);
+                    let difficultyCell = newRow.insertCell(0);
+                    let pairCell = newRow.insertCell(1); // Add a cell for the pair
+                    let timeCell = newRow.insertCell(2);
+                    difficultyCell.innerHTML = slider.value;
+                    pairCell.innerHTML = pairIndex + 1; // Display the pair number
+                    timeCell.innerHTML = elapsedTime.toFixed(2);
+
+
+                    // Show the results container
+                    resultsContainer.style.display = 'block';
+                    if (results.length === 150) {
+                      document.getElementById('endTrialMessage').innerHTML = '<p class="end-msg">You Have Finished All Tasks. Thank you for participating!</p>';
+                    // Additional actions to finalize the trial, if necessary
+                    }
+
+                }
+            }
+        }
+    </script>
+</body>
+</html>
